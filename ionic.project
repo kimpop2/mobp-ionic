@@ -1,0 +1,21 @@
+{
+  "name": "eBiz급상여",
+  "app_id": "",
+  "gulpStartupTasks": [
+    "sass",
+    "templatecache",
+    "bower",
+    "watch"
+  ],
+  "watchPatterns": [
+    "www/**/*",
+    "!www/lib/**/*"
+  ],
+  "documentRoot": "www",
+  "proxies": [
+    {
+      "path": "/api",
+      "proxyUrl": "http://localhost:5000/api"
+    }
+  ]
+}

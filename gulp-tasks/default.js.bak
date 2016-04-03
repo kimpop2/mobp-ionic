@@ -1,0 +1,197 @@
+/**
+ * gulp 명령에 따른 실행 정의로 크게 다음과 같은 경우가 있다.
+ * 1. mobp 프로젝트용으로 만들기
+ *    mobp 프로젝트를 구성하는 파일만으로 www 폴더를 구성한다. 
+ * 2. fullApp 용으로 만들기
+ *    fullApp 에 mobp 프로젝트를 추가해서 www 폴더를 구성한다. 이에 맞게 index.html 을 변경해야 한다.
+ * 3. bower_componets 에서 필요한 파일만 www/lib 폴더에 복사한다.   
+ * 4. 개발시 파일 변경 감시
+ *    소스를 구성하는 파일의 변경을 감시하다가 변경이 되면 mobp 프로젝트를 만드는 명령을 실행한다.    
+ */
+
+var gulp = require('gulp');
+var gutil = require('gulp-util');
+var clean = require('gulp-clean');
+var bower = require('bower');
+var sass = require('gulp-sass');
+var rename = require('gulp-rename');
+var sh = require('shelljs');
+
+var sourcemaps = require('gulp-sourcemaps');
+var templateCache = require('gulp-angular-templatecache');
+
+var bower_path = 'bower_components';
+var src_path = '_src';
+var dist_path = 'www';
+var lib_path = dist_path + '/lib';
+
+var paths = {
+  sass: [
+    src_path + '/scss/**/*.scss'
+  ],
+  resource: [
+    src_path + '/css/**/*.css',
+    src_path + '/img/**/*.*'
+  ],
+
+  // html
+  template: [
+    src_path + '/views/**/*.html'
+  ],
+  // 프로그램 추가시 변경
+  template_mobp: [
+    src_path + '/views/**/*.html',
+    // fullApp 전용 화면 제외
+    '!' + src_path + '/views/app/bookmarks/*.html',
+    '!' + src_path + '/views/app/feeds/*.html',
+    '!' + src_path + '/views/app/forms/*.html',
+    '!' + src_path + '/views/app/layouts/*.html',
+    '!' + src_path + '/views/app/miscellaneous/*.html',
+    '!' + src_path + '/views/app/wordpress/*.html'
+  ],
+  
+  js: [
+      src_path + '/js/**/*.js'
+  ],
+  js_mobp: [
+    src_path + '/js/**/*.js',
+    // fullApp 전용 js 제외
+    '!' + src_path + '/js/app.*.js'
+  ],
+  
+  // 공통 라이브러리
+  bower_components: [
+    bower_path + '/ionic/scss/**/*.scss',
+    bower_path + '/ionic/fonts/*.*',
+    bower_path + '/ionic/js/ionic.bundle.js',
+    //bower_path + '/angular/angular.min.js',
+    //bower_path + '/angular-animate/angular-animate.min.js',
+    //bower_path + '/angular-sanitize/angular-sanitize.min.js',
+    //bower_path + '/angular-ui-router/release/angular-ui-router.min.js',
+    //bower_path + '/ionic/js/ionic-angular.min.js',
+    bower_path + '/angular-resource/angular-resource.min.js',
+    bower_path + '/underscore/underscore-min.js',
+    bower_path + '/moment/min/moment.min.js',
+    bower_path + '/angular-moment/angular-moment.min.js',
+    bower_path + '/angular-slugify/dist/angular-slugify.min.js',
+    bower_path + '/collide/collide.js',
+    bower_path + '/ngCordova/dist/ng-cordova.min.js',
+    bower_path + '/bourbon/app/assets/stylesheets/**/*.scss',
+  // FullApp 전용 라이브러리
+    bower_path + '/ngmap/build/scripts/ng-map.min.js',
+    bower_path + '/ionic-contrib-tinder-cards/ionic.tdcards.css',
+    bower_path + '/ionic-contrib-tinder-cards/ionic.tdcards.js',
+    bower_path + '/angular-youtube-mb/dest/angular-youtube-embed.min.js',
+  // mobp 전용 라이브러리
+    bower_path + '/ionic-datepicker/dist/ionic-datepicker.bundle.min.js', 
+    bower_path + '/ionic-datepicker/dist/ionic-datepicker.styles.js', 
+    bower_path + '/ionic-datepicker/dist/templates.js'
+  ]
+};
+
+gulp.task('sass', function() {
+  gulp.src(src_path + '/ionic.app.scss')
+    .pipe(sourcemaps.init())
+    .pipe(sass({
+      errLogToConsole: true
+    }))
+    .pipe(sourcemaps.write())
+    .pipe(gulp.dest(dist_path + '/css/'));
+    
+});
+
+gulp.task('sass:mobp', function() {
+  gulp.src(src_path + '/ionic.mobp.scss')
+    .pipe(sourcemaps.init())
+    .pipe(sass({
+      errLogToConsole: true
+    }))
+    .pipe(sourcemaps.write())
+    .pipe(gulp.dest(dist_path + '/css/'));
+    
+});
+
+
+gulp.task('templatecache', function () {
+  gulp.src(paths.template)
+    .pipe(templateCache({standalone:true, filename:'views.js', module:'mobp.views', root:'views/'}))
+    .pipe(gulp.dest(dist_path + '/js/'));
+    
+});
+
+gulp.task('templatecache:mobp', function () {
+  gulp.src(paths.template_mobp)
+    .pipe(templateCache({standalone:true, filename:'views.js', module:'mobp.views', root:'views/'}))
+    .pipe(gulp.dest(dist_path + '/js/'));
+
+});
+
+gulp.task('clean', function () {
+	return gulp.src(dist_path + '', {read: false})
+		.pipe(clean());
+    
+});
+
+gulp.task('resource', function () {
+  gulp.src(paths.resource, { base: src_path })
+    .pipe(gulp.dest(dist_path)); /////////////// why can't not use on('end', done);
+});
+
+// js 라이브러리를 www/lib (lib_path) 아래 복사
+gulp.task('bower', ['clean'], function () {
+  gulp.src(paths.bower_components, { base: bower_path })
+    .pipe(gulp.dest(lib_path));
+    //.on('end', done);
+});
+
+// js 소스를 www/js (js_path) 아래 복사
+gulp.task('copy', ['resource'], function () {
+  gulp.src(paths.js)
+    .pipe(gulp.dest(dist_path + '/js'));
+    
+});
+
+gulp.task('copy:mobp', ['resource'], function () {
+  gulp.src(paths.js_mobp)
+    .pipe(gulp.dest(dist_path + '/js'));
+  
+  gulp.src( src_path + '/js/mobp.js')
+    .pipe(rename('app.js'))
+    .pipe(gulp.dest(dist_path + '/js'));
+
+  gulp.src( src_path + '/index.mobp.html')
+    .pipe(rename('index.html'))
+    .pipe(gulp.dest(dist_path));
+  
+});
+
+// 첫번째 파라미터는 대상, 두번째 파라미터는 실행할 작업
+gulp.task('watch', function() {
+  gulp.watch(paths.sass, ['sass']);
+  gulp.watch(paths.template, ['templatecache']);
+});
+
+gulp.task('mobp', ['bower', 'sass:mobp', 'templatecache:mobp', 'copy:mobp'], function () {
+  
+
+});
+
+gulp.task('install', ['git-check'], function() {
+  return bower.commands.install()
+    .on('log', function(data) {
+      gutil.log('bower', gutil.colors.cyan(data.id), data.message);
+    });
+});
+
+gulp.task('git-check', function(done) {
+  if (!sh.which('git')) {
+    console.log(
+      '  ' + gutil.colors.red('Git is not installed.'),
+      '\n  Git, the version control system, is required to download Ionic.',
+      '\n  Download git here:', gutil.colors.cyan('http://git-scm.com/downloads') + '.',
+      '\n  Once git is installed, run \'' + gutil.colors.cyan('gulp install') + '\' again.'
+    );
+    process.exit(1);
+  }
+  done();
+});
